@@ -4,7 +4,7 @@ import os
 import json
 import multiprocessing as mp
 
-from .token import Token
+from subpack.token import Token
 
 
 class DataDescriptor:

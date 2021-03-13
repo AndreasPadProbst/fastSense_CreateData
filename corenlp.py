@@ -1,7 +1,7 @@
 import multiprocessing as mp
 import queue
 from typing import Dict, List, Tuple, Optional
-from .token import Token
+from subpack.token import Token
 
 
 def _corenlp_server(classpath: str, properties: Dict[str, str], input_queue: mp.Queue, output_queue: mp.Queue):

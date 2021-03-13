@@ -5,9 +5,9 @@ import re
 import os
 from typing import List
 
-from .extractor import WikiExtractor
-from .utils import normalize_page_title, group_title
-from ..corenlp import CoreNlpBridge
+from extractor import WikiExtractor
+from subpack.utils import normalize_page_title, group_title
+from corenlp import CoreNlpBridge
 
 
 class WikiConverter:
@@ -459,7 +459,7 @@ class WikiConverter:
 				"article_id" INTEGER,
 				"section_index" INTEGER
 			);
-			
+
 			-- Find section indexes for 'see also' sections and child sections on disambiguation pages
 			with
 			root_sections as (select S.article_id, S.section_index, S.parent_index from sections S, articles A where S.article_id = A.id and A.is_disambig = 1 and lower(S.title) = 'see also'),
@@ -471,7 +471,7 @@ class WikiConverter:
 			union select article_id, section_index from child_sections_l1
 			union select article_id, section_index from child_sections_l2
 			union select article_id, section_index from child_sections_l3;
-			
+
 			-- Create temp table for links on disambiguation pages
 			DROP TABLE IF EXISTS "temp_disambig_links";
 			CREATE TABLE "temp_disambig_links" (
@@ -482,7 +482,7 @@ class WikiConverter:
 				"link_title" TEXT,
 				"ignored" INTEGER
 			);
-			
+
 			-- Find links on disambiguation pages
 			insert into temp_disambig_links
 			select
@@ -496,10 +496,10 @@ class WikiConverter:
 			left join temp_see_also_sections S
 			on L.article_id = S.article_id and L.section_index = S.section_index
 			where A.is_disambig = 1 and L.article_id = A.id;
-			
+
 			-- drop temp see also sections table
 			drop table temp_see_also_sections;
-			
+
 			-- Create temp table for links
 			DROP TABLE IF EXISTS "temp_links";
 			CREATE TABLE "temp_links" (
@@ -511,7 +511,7 @@ class WikiConverter:
 				"linked_section_index" INTEGER,
 				"group_title" TEXT
 			);
-			
+
 			insert into temp_links
 			select distinct
 				article_id,
@@ -525,7 +525,7 @@ class WikiConverter:
 				links
 			where
 				is_on_disambig_page = 0;
-			
+
 			-- create temp table for grouped links
 			DROP TABLE IF EXISTS "temp_grouped_links";
 			CREATE TABLE "temp_grouped_links" (
@@ -537,7 +537,7 @@ class WikiConverter:
 				"linked_count_matching_title" INTEGER,
 				"linked_count_other_title" INTEGER
 			);
-			
+
 			-- Add link counts
 			with total_counts as (
 				select
@@ -589,10 +589,10 @@ class WikiConverter:
 			left join total_counts T on
 				M.linked_article_id = T.linked_article_id
 				and M.linked_section_index = T.linked_section_index;
-			
+
 			-- Drop temp table for links
 			drop table temp_links;
-			
+
 			-- insert links from disambig pages
 			insert into temp_grouped_links
 			select distinct
@@ -607,7 +607,7 @@ class WikiConverter:
 				temp_disambig_links
 			where
 				ignored = 0;
-			
+
 			-- add article counts
 			with article_paragraph_counts as (
 				select
@@ -642,7 +642,7 @@ class WikiConverter:
 				article_paragraph_counts C
 			where
 				A.article_id = C.article_id;
-			
+
 			-- add section counts
 			with temp_section_groups as (
 				select distinct
@@ -669,7 +669,7 @@ class WikiConverter:
 			where
 				S.article_id = C.article_id
 				and S.section_index = C.section_index;
-			
+
 			-- create table for grouped links and insert merged rows from temp table
 			DROP TABLE IF EXISTS "grouped_links";
 			CREATE TABLE "grouped_links" (
@@ -681,7 +681,7 @@ class WikiConverter:
 				"linked_count_matching_title" INTEGER,
 				"linked_count_other_title" INTEGER
 			);
-			
+
 			insert into grouped_links
 			select
 				group_title,
@@ -697,7 +697,7 @@ class WikiConverter:
 				group_title,
 				article_id,
 				section_index;
-			
+
 			-- drop temp tables
 			drop table temp_disambig_links;
 			drop table temp_grouped_links;
@@ -714,7 +714,7 @@ class WikiConverter:
 			"linked_count_other_title" INTEGER,
 			"article_paragraph_count" INTEGER
 			);
-			
+
 			with disambig_group_titles as (
 				select distinct group_title
 				from articles
@@ -733,7 +733,7 @@ class WikiConverter:
 				group_title in disambig_group_titles
 				and article_paragraph_count + linked_count_matching_title + linked_count_other_title >= 14 -- at least 14 examples
 				and (is_on_disambig_page = 1 or linked_count_matching_title >= 5);  -- not ignored on disambig. page or linked at least 5 times using group title
-			
+
 			create unique index if not exists raw_senses_index on raw_senses (group_title, article_id, section_index);
 		""")
 
@@ -744,37 +744,37 @@ class WikiConverter:
 				"id" INTEGER PRIMARY KEY AUTOINCREMENT,
 				"group_title" TEXT
 			);
-			
+
 			insert into sense_groups (group_title)
 			select group_title
 			from raw_senses
 			group by group_title
 			order by sum(article_paragraph_count + linked_count_matching_title + linked_count_other_title) desc;
-			
+
 			update sense_groups set id = id - 1;  -- offset id by -1 to make it start at 0
-			
+
 			DROP TABLE IF EXISTS "senses";
 			CREATE TABLE "senses" (
 				"id" INTEGER PRIMARY KEY AUTOINCREMENT,
 				"article_id" INTEGER,
 				"section_index" INTEGER
 			);
-			
+
 			insert into senses (article_id, section_index)
 			select article_id, section_index
 			from raw_senses
 			group by article_id, section_index
 			order by sum(article_paragraph_count + linked_count_matching_title + linked_count_other_title) desc;
-			
+
 			update senses set id = id - 1;  -- offset id by -1 to make it start at 0
-			
+
 			DROP TABLE IF EXISTS "sense_group_senses";
 			CREATE TABLE "sense_group_senses" (
 				"id" INTEGER PRIMARY KEY,
 				"sense_group" INTEGER,
 				"sense" INTEGER
 			);
-			
+
 			insert into sense_group_senses (sense_group, sense)
 			select
 				G.id,
@@ -782,7 +782,7 @@ class WikiConverter:
 			from raw_senses R, sense_groups G, senses S
 			where R.group_title = G.group_title and R.article_id = S.article_id and R.section_index = S.section_index
 			order by article_paragraph_count + linked_count_matching_title + linked_count_other_title desc;
-			
+
 			update sense_group_senses set id = id - 1;  -- offset id by -1 to make it start at 0
 		""")
 
@@ -794,7 +794,7 @@ class WikiConverter:
 				"group_title" TEXT,
 				"alternative_group_title" TEXT
 			);
-			
+
 			insert into alternative_group_titles
 			select
 				A.group_title,
@@ -808,7 +808,7 @@ class WikiConverter:
 				and A.is_disambig = 1
 				and R.group_title != A.group_title
 			group by R.group_title;
-			
+
 			-- Delete alternative titles that are used for multiple groups or match actual groups.
 			delete from alternative_group_titles
 			where alternative_group_title in (
@@ -842,9 +842,9 @@ class WikiConverter:
 				"sense_group_sense_id" INTEGER,
 				"dataset" INTEGER
 			);
-			
+
 			create unique index if not exists data_index on data (sense_group_sense_id, article_id, section_index, paragraph_index, sentence_index);
-			
+
 			-- Link paragraphs
 			insert or ignore into data
 			select distinct
@@ -1168,7 +1168,7 @@ class WikiConverter:
 				page_id, section_index, paragraph_index, paragraph_text, links = paragraph_info
 
 				try:
-					sentences = corenlp.tokenize_text(paragraph_text)
+					sentences = corenlp.tokenize(paragraph_text)
 				except CoreNlpBridge.TokenizationError:
 					continue
 

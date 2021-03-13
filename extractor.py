@@ -5,9 +5,9 @@ import time
 import html
 import mwparserfromhell as mwp
 
-from .utils import normalize_page_title, normalize_section_title
-from .reader import WikiDumpReader
-from .parser import WikitextParser
+from subpack.utils import normalize_page_title, normalize_section_title
+from subpack.reader import WikiDumpReader
+from subpack.parser import WikitextParser
 
 
 class Page:

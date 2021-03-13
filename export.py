@@ -4,9 +4,10 @@ import multiprocessing as mp
 import os
 from typing import List, Dict
 
-from ..data import DataDescriptor, ExampleWriter
-from ..token import Token
-from .utils import normalize_section_title
+from data import DataDescriptor
+from data import ExampleWriter
+from subpack.token import Token
+from subpack.utils import normalize_section_title
 
 
 class ExampleExporter:

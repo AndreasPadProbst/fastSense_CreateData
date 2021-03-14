@@ -1,2 +1,6 @@
 data/
+english_data/
 Documentation.odt
+pycharm_virtual_env/
+__pycache__/
+subpack/__pycache__/

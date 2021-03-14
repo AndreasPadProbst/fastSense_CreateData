@@ -17,7 +17,8 @@ class WikiConverter:
 		os.makedirs(os.path.dirname(db_path), exist_ok=True)
 		os.makedirs(output_path, exist_ok=True)
 
-		number_of_workers = 6
+		# number_of_workers = 6
+		number_of_workers = mp.cpu_count()
 
 		page_queue = mp.Queue(1000)
 		sql_queue = mp.Queue(10000)
@@ -1168,7 +1169,7 @@ class WikiConverter:
 				page_id, section_index, paragraph_index, paragraph_text, links = paragraph_info
 
 				try:
-					sentences = corenlp.tokenize(paragraph_text)
+					sentences = corenlp.tokenize([(0, paragraph_text)])[0]
 				except CoreNlpBridge.TokenizationError:
 					continue
 

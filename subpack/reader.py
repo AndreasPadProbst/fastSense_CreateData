@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import os.path
 import bz2
 import xml.sax

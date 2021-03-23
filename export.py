@@ -85,7 +85,7 @@ class ExampleExporter:
 			for row in c_in.execute(query):
 				label, article_title, article_section = row
 
-				article_url = "https://en.wikipedia.org/wiki/" + article_title
+				article_url = "https://de.wikipedia.org/wiki/" + article_title
 				if article_section is not None:
 					article_url += "#" + normalize_section_title(article_section)
 

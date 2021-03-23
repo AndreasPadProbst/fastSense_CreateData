@@ -17,9 +17,10 @@ class WikiConverter:
 		os.makedirs(os.path.dirname(db_path), exist_ok=True)
 		os.makedirs(output_path, exist_ok=True)
 
-		# number_of_workers = 6
-		number_of_workers = mp.cpu_count()
+		number_of_workers = 6
+		# number_of_workers = mp.cpu_count()
 
+		print("Number of used processors:", number_of_workers)
 		page_queue = mp.Queue(1000)
 		sql_queue = mp.Queue(10000)
 		paragraph_queue = mp.Queue(1000)
@@ -310,7 +311,7 @@ class WikiConverter:
 
 		c.execute("UPDATE articles SET is_disambig = 0")
 
-		c.execute("SELECT id FROM categories WHERE title = 'Disambiguation_pages'")
+		c.execute("SELECT id FROM categories WHERE title = 'Begriffsklärung'")
 		disambig_page_ids = set()
 		category_ids = {c.fetchone()[0]}
 		while len(category_ids) > 0:

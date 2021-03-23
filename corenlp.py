@@ -1,53 +1,13 @@
 import multiprocessing as mp
 import queue
+import spacy
 from typing import Dict, List, Tuple, Optional
 from subpack.token import Token
+nlp = spacy.load('de_core_news_lg', disable=['ner', 'parser', 'textcat', 'attribute_ruler']) #keep only tagger, lemmatizer, and module for word embedding
 
 
 def _corenlp_server(classpath: str, properties: Dict[str, str], input_queue: mp.Queue, output_queue: mp.Queue):
 	# Imports are inside function because pyjnius is ugly
-
-	import jnius_config
-	jnius_config.add_options('-Xmx2G')
-	jnius_config.add_options('-Xss1280k')  # Needed because bug in linux kernel
-	jnius_config.set_classpath(classpath)
-
-	import jnius
-	import ftfy.bad_codecs  # provides "utf-8-variants"
-
-	StanfordCoreNLP = jnius.autoclass('edu.stanford.nlp.pipeline.StanfordCoreNLP')
-	Annotation = jnius.autoclass('edu.stanford.nlp.pipeline.Annotation')
-	PropertiesClass = jnius.autoclass('java.util.Properties')
-	SentencesAnnotation = jnius.autoclass('edu.stanford.nlp.ling.CoreAnnotations$SentencesAnnotation')
-	TokensAnnotation = jnius.autoclass('edu.stanford.nlp.ling.CoreAnnotations$TokensAnnotation')
-	OriginalTextAnnotation = jnius.autoclass('edu.stanford.nlp.ling.CoreAnnotations$OriginalTextAnnotation')
-	BeforeAnnotation = jnius.autoclass('edu.stanford.nlp.ling.CoreAnnotations$BeforeAnnotation')
-	AfterAnnotation = jnius.autoclass('edu.stanford.nlp.ling.CoreAnnotations$AfterAnnotation')
-	LemmaAnnotation = jnius.autoclass('edu.stanford.nlp.ling.CoreAnnotations$LemmaAnnotation')
-	PartOfSpeechAnnotation = jnius.autoclass('edu.stanford.nlp.ling.CoreAnnotations$PartOfSpeechAnnotation')
-
-	String = jnius.autoclass('java.lang.String')
-	StandardCharsets = jnius.autoclass('java.nio.charset.StandardCharsets')
-
-	props = PropertiesClass()
-	for key, value in properties.items():
-		key_java_string = String(key.encode("utf-8"), StandardCharsets.UTF_8)
-		value_java_string = String(value.encode("utf-8"), StandardCharsets.UTF_8)
-		props.setProperty(key_java_string, value_java_string)
-
-	annotators = properties.get("annotators", "").split(",")
-	annotators = list(map(str.lower, map(str.strip, annotators)))
-	has_lemma = "lemma" in annotators
-	has_pos = "pos" in annotators
-
-	pipeline = StanfordCoreNLP(props)
-
-	def get_annotation(token, annotation):
-		try:
-			return token.get(annotation)
-		except UnicodeDecodeError as e:
-			# Pyjnius returns strings in Java-internal modified utf-8 encoding, which isn't 100% compatible with utf-8.
-			return e.object.decode("utf-8-variants")
 
 	while True:
 		job = input_queue.get()
@@ -60,51 +20,42 @@ def _corenlp_server(classpath: str, properties: Dict[str, str], input_queue: mp.
 			output_queue.put((job_id, []))
 			continue
 
-		utf8_bytes = text.encode("utf-8")
-		java_string = String(utf8_bytes, StandardCharsets.UTF_8)
-
-		document = Annotation(java_string)
-		pipeline.annotate(document)
-		sentence_iter = document.get(SentencesAnnotation).iterator()
-
 		reconstructed_text = ""
 		after = ""
-
 		sentences = []
-		while sentence_iter.hasNext():
-			token_iter = sentence_iter.next().get(TokensAnnotation).iterator()
+		sentence_tokens = []
+		doc = nlp(text)
+		for token in doc:
+			original_text = token.text
+			lemma = token.lemma_
+			pos = token.pos_
+			whitespace = token.whitespace_
+			# start and end index are not used because they may be different from Python's string indexes.
+			#     print(original_text)
+			#     print(lemma)
+			#     print(pos)
+			begin = len(reconstructed_text) + offset
+			reconstructed_text += original_text + whitespace
+			end = len(reconstructed_text) + offset
 
-			sentence_tokens = []
-			while token_iter.hasNext():
-				token = token_iter.next()
+			token_object = Token(
+				start=begin,
+				end=end,
+				value=original_text,
+				pos=pos,
+				lemma=lemma,
+				before=" ",
+				after=" "
+			)
 
-				original_text = get_annotation(token, OriginalTextAnnotation)
-				lemma = get_annotation(token, LemmaAnnotation) if has_lemma else None
-				pos = get_annotation(token, PartOfSpeechAnnotation) if has_pos else None
-				before = get_annotation(token, BeforeAnnotation)
-				after = get_annotation(token, AfterAnnotation)
-				# start and end index are not used because they may be different from Python's string indexes.
+			sentence_tokens.append(token_object)
+		#     print(sentence_tokens)
+		sentences.append(sentence_tokens)
+		# print(sentences)
+		# print(reconstructed_text)
 
-				reconstructed_text += before
-				begin = len(reconstructed_text) + offset
-				reconstructed_text += original_text
-				end = len(reconstructed_text) + offset
-
-				token_object = Token(
-					start=begin,
-					end=end,
-					value=original_text,
-					pos=pos,
-					lemma=lemma,
-					before=before,
-					after=after
-				)
-				sentence_tokens.append(token_object)
-
-			sentences.append(sentence_tokens)
-
-		reconstructed_text += after
 		if reconstructed_text != text:
+			print("Reconstructed Text didnt match text")
 			output_queue.put((job_id, None))
 		else:
 			output_queue.put((job_id, sentences))

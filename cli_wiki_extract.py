@@ -16,19 +16,19 @@ def prepare():
         "--dump",
         type=str,
         required=True,
-        help="Bz2-compressed XML dump of english Wikipedia (enwiki-*-pages-articles.xml.bz2)"
+        help="Bz2-compressed XML dump of english Wikipedia (dewiki-*-pages-articles.xml.bz2)"
     )
     arg_parser.add_argument(
         "--page_table",
         type=str,
         required=True,
-        help="Gzip-compressed SQL dump of page table. (enwiki-*-page.sql.gz)"
+        help="Gzip-compressed SQL dump of page table. (dewiki-*-page.sql.gz)"
     )
     arg_parser.add_argument(
         "--categorylinks_table",
         type=str,
         required=True,
-        help="Gzip-compressed SQL dump of categorylinks table. (enwiki-*-categorylinks.sql.gz)"
+        help="Gzip-compressed SQL dump of categorylinks table. (dewiki-*-categorylinks.sql.gz)"
     )
     arg_parser.add_argument(
         "--corenlp",

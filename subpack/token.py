@@ -1,4 +1,4 @@
-from typing import Optional, List, Set
+from typing import Optional, List
 
 
 class Token:

@@ -1,7 +1,7 @@
 import os.path
 import bz2
 import xml.sax
-
+#Tags in English Wiki dump are the same as in German Wiki dump
 
 class Element(xml.sax.handler.ContentHandler):
 

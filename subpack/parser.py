@@ -57,6 +57,8 @@ class WikitextParser:
         self.preprocessor = WikitextPreprocessor(TEMPLATE_MAP)
 
         # https: // en.wikipedia.org / wiki / Help: HTML_in_wikitext
+        # https://de.wikipedia.org/wiki/Hilfe:Tags
+        # Tags in English Wikipedia are the same as in the German wikipedia
 
         self.ignored_tags = [
             "ref",

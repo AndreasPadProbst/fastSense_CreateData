@@ -126,7 +126,7 @@ class WikitextParser:
                 namespace_match = re.match(r"^(.*?):", link_destination)
                 if namespace_match is not None:
                     namespace = namespace_match.group(1).capitalize()
-                    if namespace == "Category" or namespace == "File" or namespace == "Image":
+                    if namespace == "Kategorie" or namespace == "Datei" or namespace == "Image": #namespace image is deprecated (now its the file namespace)
                         continue  # Ignore embedded images/audio and category links
                     else:
                         convert_link_to_text = True

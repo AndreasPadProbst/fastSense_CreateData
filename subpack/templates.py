@@ -694,5 +694,5 @@ TEMPLATE_MAP = {
 	"US_Census_Population": table_start,
 	"Benutzer:Vegatello/Vorlage:Namens-_und_Koordinatenspalten": table_start,
 	"Verb Zelle": table_start,
-	
+
 }

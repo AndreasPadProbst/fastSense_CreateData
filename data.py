@@ -3,7 +3,7 @@ import tensorflow as tf
 import os
 import json
 import multiprocessing as mp
-
+import csv
 from subpack.token import Token
 
 
@@ -70,6 +70,22 @@ class DataDescriptor:
 
 		return n_gram_values
 
+	def return_original(self, tokens: Iterator[Token]) -> List[str]:
+		"""
+		Returns original sentence.
+
+		:param tokens: List of tokens.
+		:return:  List of original tokens as a string
+		"""
+		token_list = []
+		original_iterator = map(lambda x: x.value, tokens)
+
+		for token in original_iterator:
+			token_list.append(token)
+
+		return token_list
+
+
 	def save(self, path: str):
 		"""
 		Writes data descriptor to JSON file.
@@ -116,7 +132,7 @@ class ExampleWriter:
 	Writes examples to file on disk.
 	"""
 
-	MAX_EXAMPLES_PER_FILE = 3000000
+	MAX_EXAMPLES_PER_FILE = 1000000
 
 	def __init__(self, path: str, file_prefix: str, data_descriptor: DataDescriptor, number_of_workers: int = 4):
 		"""
@@ -191,58 +207,93 @@ class ExampleWriter:
 			assert sense in possible_senses
 
 			prepared_tokens = data_descriptor.prepare_tokens(tokens=tokens)
+
 			if len(prepared_tokens) == 0:
 				print("Skipped empty example:", write_task)
 				continue
 
-			encoded_tokens = list(map(lambda s: s.encode("utf8"), prepared_tokens))
+			##########################
+			original_tokens = data_descriptor.return_original(tokens=tokens)
+			data_for_csv = [original_tokens, tokens, prepared_tokens, possible_senses, sense]
 
-			feature = {
-				"tokens": tf.train.Feature(bytes_list=tf.train.BytesList(value=encoded_tokens)),
-				"possible_senses": tf.train.Feature(int64_list=tf.train.Int64List(value=possible_senses)),
-				"sense": tf.train.Feature(int64_list=tf.train.Int64List(value=[sense]))
-			}
+			out_queue.put(data_for_csv)
 
-			example = tf.train.Example(features=tf.train.Features(feature=feature))
-			serialized_example = example.SerializeToString()
-
-			out_queue.put(serialized_example)
+			# encoded_tokens = list(map(lambda s: s.encode("utf8"), prepared_tokens))
+			#
+			# feature = {
+			# 	"tokens": tf.train.Feature(bytes_list=tf.train.BytesList(value=encoded_tokens)),
+			# 	"possible_senses": tf.train.Feature(int64_list=tf.train.Int64List(value=possible_senses)),
+			# 	"sense": tf.train.Feature(int64_list=tf.train.Int64List(value=[sense]))
+			# }
+			#
+			# example = tf.train.Example(features=tf.train.Features(feature=feature))
+			# serialized_example = example.SerializeToString()
+			#
+			# out_queue.put(serialized_example)
 
 	@staticmethod
 	def _write_task(path: str, file_prefix: str, queue: mp.Queue):
 		os.makedirs(path, exist_ok=False)
 
-		file_options = tf.python_io.TFRecordOptions(compression_type=tf.python_io.TFRecordCompressionType.GZIP)
-
+		##########################
 		writer = None
 		next_file_index = 0
-
 		examples_in_current_file = 0
 
 		while True:
-			serialized_example = queue.get()
-			if serialized_example is None:
+			data_for_csv = queue.get()
+			if data_for_csv is None:
 				break
 
 			if writer is None or examples_in_current_file >= ExampleWriter.MAX_EXAMPLES_PER_FILE:
-				filename = file_prefix + "." + str(next_file_index).rjust(3, "0") + ".tfrecords.gz"
+				filename = path + "/" + file_prefix + "." + str(next_file_index).rjust(3, "0") + ".csv"
 				next_file_index += 1
 
 				if writer is not None:
 					writer.close()
 
-				writer = tf.python_io.TFRecordWriter(
-					os.path.join(path, filename),
-					options=file_options
-				)
+				writer = open(filename, 'a+', newline='')
+				csv_writer = csv.writer(writer)
+
 				examples_in_current_file = 0
 
-			writer.write(serialized_example)
-
+			csv_writer.writerow(data_for_csv)
 			examples_in_current_file += 1
 
 		if writer is not None:
 			writer.close()
+
+		# file_options = tf.python_io.TFRecordOptions(compression_type=tf.python_io.TFRecordCompressionType.GZIP)
+		#
+		# writer = None
+		# next_file_index = 0
+		#
+		# examples_in_current_file = 0
+		#
+		# while True:
+		# 	serialized_example = queue.get()
+		# 	if serialized_example is None:
+		# 		break
+		#
+		# 	if writer is None or examples_in_current_file >= ExampleWriter.MAX_EXAMPLES_PER_FILE:
+		# 		filename = file_prefix + "." + str(next_file_index).rjust(3, "0") + ".tfrecords.gz"
+		# 		next_file_index += 1
+		#
+		# 		if writer is not None:
+		# 			writer.close()
+		#
+		# 		writer = tf.python_io.TFRecordWriter(
+		# 			os.path.join(path, filename),
+		# 			options=file_options
+		# 		)
+		# 		examples_in_current_file = 0
+		#
+		# 	writer.write(serialized_example)
+		#
+		# 	examples_in_current_file += 1
+		#
+		# if writer is not None:
+		# 	writer.close()
 
 	def __enter__(self):
 		return self

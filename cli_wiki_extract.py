@@ -30,12 +30,7 @@ def prepare():
         required=True,
         help="Gzip-compressed SQL dump of categorylinks table. (dewiki-*-categorylinks.sql.gz)"
     )
-    arg_parser.add_argument(
-        "--corenlp",
-        type=str,
-        required=True,
-        help="Path to folder containing Stanford CoreNLP parser"
-    )
+
     arg_parser.add_argument(
         "--db",
         type=str,
@@ -61,7 +56,7 @@ def prepare():
         db_path=args.db,
         output_path=args.intermediate_output,
         output_file_count=4,
-        corenlp_classpath=os.path.join(args.corenlp, "*"),
+        corenlp_classpath="",
         test_set_sizes=test_set_sizes,
         print_progress=True
     )

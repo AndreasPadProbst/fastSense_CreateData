@@ -5,11 +5,7 @@
 * [Setup](#setup)
 * [Required Data](#required-data)
 * [How to Use](#how-to-use)
-* [Technologies](#technologies)
-* [Features](#features)
-* [Status](#status)
-* [Inspiration](#inspiration)
-* [Contact](#contact)
+* [Code Example](#code-example)
 
 ## General Info
 This package creates a WSD Trainings Corpus from the disambiguation pages of the German Wikipedia. The main structure of this code is taken from [https://github.com/texttechnologylab/fastSense](https://github.com/texttechnologylab/fastSense) (accessed: 20.02.2021) and modified to be able to parse

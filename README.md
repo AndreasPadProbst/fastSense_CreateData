@@ -6,6 +6,7 @@
 * [Required Data](#required-data)
 * [How to Use](#how-to-use)
 * [Code Example](#code-example)
+* [Hints](#hints)
 
 ## General Info
 This package creates a WSD Trainings Corpus from the disambiguation pages of the German Wikipedia. The main structure of this code is taken from [https://github.com/texttechnologylab/fastSense](https://github.com/texttechnologylab/fastSense) (accessed: 20.02.2021) and modified to be able to parse
@@ -56,3 +57,6 @@ python cli_wiki_extract.py --page_table ./data/dewiki-latest-page.sql.gz --categ
 python cli_wiki_export.py --intermediate ./data/intermediate --db ./data/sql3_db/fastSense.db --output ./data/export_output -f p_out,1,0,0,1,1,0 
 ```
 
+## Hints
+* run scripts over night (10+ hours runtime each)
+* the second script creates over 60M training samples and requires 500GB+ disk storage, so use external hard disk/ssd to store training data

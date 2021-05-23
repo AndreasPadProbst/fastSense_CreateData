@@ -19,7 +19,6 @@ paper which used an external UIMA-based framework called "Textimager" for the pr
 
 ## Setup
 This package was used with **Python 3.6** with the following package specifications:
-* **ftfy** = 5.9
 * **mwparserfromhell** = 0.6
 * **spacy** = 3.0 (along with the "de_core_news_lg" pipeline)
 

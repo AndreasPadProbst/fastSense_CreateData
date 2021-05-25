@@ -49,7 +49,7 @@ def group_title(title):
 	else:
 		group_title = title
 	
-	no_article_group_title_match = re.match(r"^((a)|(an)|(the)) (.*)$", group_title)
+	no_article_group_title_match = re.match(r"^((der)|(die)|(das)|(ein)|(einer)) (.*)$", group_title)
 	if no_article_group_title_match is not None:
 		no_article_group_title = no_article_group_title_match.group(5)
 	else:

@@ -58,4 +58,4 @@ python cli_wiki_export.py --intermediate ./data/intermediate --db ./data/sql3_db
 
 ## Hints
 * run scripts over night (10+ hours runtime each)
-* the second script creates over 60M training samples and requires 500GB+ disk storage, so use external hard disk/ssd to store training data
+* around 15GB storage needed per exported output

@@ -6,3 +6,4 @@ pycharm_virtual_env/
 __pycache__/
 .idea/
 /subpack/__pycache__/
+/bert_embeddings/

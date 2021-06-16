@@ -1,303 +1,324 @@
 from typing import List, Iterator
-# import tensorflow as tf
+import tensorflow as tf
 import os
 import json
 import multiprocessing as mp
-import csv
 from subpack.token import Token
-
+# import torch
+# from transformers import BertTokenizer, BertModel
+# import numpy as np
+# tokenizer = BertTokenizer.from_pretrained("bert-base-german-dbmdz-cased")
+# model = BertModel.from_pretrained("bert-base-german-dbmdz-cased", output_hidden_states=False)
+# model.eval()
 
 class DataDescriptor:
-	"""
-	Describes format of input data.
-	"""
+    """
+    Describes format of input data.
+    """
 
-	PUNCTUATION = [".", ",", ";", ":", "?", "!", "\"", "'", "(", ")", "[", "]", "{", "}"]
+    PUNCTUATION = [".", ",", ";", ":", "?", "!", "\"", "'", "(", ")", "[", "]", "{", "}"]
 
-	def __init__(
-			self,
-			n_gram_size: int,
-			caseless: bool,
-			ignore_punctuation: bool,
-			add_pos_tags: bool,
-			uses_lemma: bool,
-			uses_sentences: bool
-	):
-		self.n_gram_size = n_gram_size
-		self.caseless = caseless
-		self.ignore_punctuation = ignore_punctuation
-		self.add_pos_tags = add_pos_tags
-		self.uses_lemma = uses_lemma
-		self.uses_sentences = uses_sentences
+    def __init__(
+            self,
+            n_gram_size: int,
+            caseless: bool,
+            ignore_punctuation: bool,
+            add_pos_tags: bool,
+            uses_lemma: bool,
+            uses_sentences: bool
+    ):
+        self.n_gram_size = n_gram_size
+        self.caseless = caseless
+        self.ignore_punctuation = ignore_punctuation
+        self.add_pos_tags = add_pos_tags
+        self.uses_lemma = uses_lemma
+        self.uses_sentences = uses_sentences
 
-	@staticmethod
-	def build_n_grams(tokens: List[str], n_gram_size: int, min_n_gram_size: int = 1) -> List[str]:
-		if n_gram_size == 1:
-			return tokens
+    @staticmethod
+    def build_n_grams(tokens: List[str], n_gram_size: int, min_n_gram_size: int = 1) -> List[str]:
+        if n_gram_size == 1:
+            return tokens
 
-		results = []
+        results = []
 
-		for i in range(min(n_gram_size - min_n_gram_size + 1, len(tokens))):
-			current_n_gram_size = i + min_n_gram_size
-			for j in range(max(len(tokens) - current_n_gram_size + 1, 1)):
-				results.append("_".join(tokens[j:(j + current_n_gram_size)]))
+        for i in range(min(n_gram_size - min_n_gram_size + 1, len(tokens))):
+            current_n_gram_size = i + min_n_gram_size
+            for j in range(max(len(tokens) - current_n_gram_size + 1, 1)):
+                results.append("_".join(tokens[j:(j + current_n_gram_size)]))
 
-		return results
+        return results
 
-	def prepare_tokens(self, tokens: Iterator[Token]) -> List[str]:
-		"""
-		Converts tokens into list of strings, based on format specifications.
+    def prepare_tokens(self, tokens: Iterator[Token]) -> List[str]:
+        """
+        Converts tokens into list of strings, based on format specifications.
 
-		:param tokens: List of tokens.
-		:return:  List of tokens as strings, including e.g. n-grams and transformations
-		"""
+        :param tokens: List of tokens.
+        :return:  List of tokens as strings, including e.g. n-grams and transformations
+        """
 
-		if self.ignore_punctuation:
-			tokens = filter(lambda t: t.value not in self.PUNCTUATION, tokens)
+        if self.ignore_punctuation:
+            tokens = filter(lambda t: t.value not in self.PUNCTUATION, tokens)
 
-		if self.uses_lemma:
-			token_values = map(lambda t: t.lemma, tokens)
-		else:
-			token_values = map(lambda t: t.value, tokens)
+        if self.uses_lemma:
+            token_values = map(lambda t: t.lemma, tokens)
+        else:
+            token_values = map(lambda t: t.value, tokens)
 
-		if self.caseless:
-			token_values = map(lambda v: v.lower(), token_values)
+        if self.caseless:
+            token_values = map(lambda v: v.lower(), token_values)
 
-		if self.add_pos_tags:
-			token_values = map(lambda x: "_".join(x), zip(token_values, map(lambda t: t.pos, tokens)))
+        if self.add_pos_tags:
+            token_values = map(lambda x: "_".join(x), zip(token_values, map(lambda t: t.pos, tokens)))
 
-		n_gram_values = self.build_n_grams(tokens=list(token_values), n_gram_size=self.n_gram_size)
+        n_gram_values = self.build_n_grams(tokens=list(token_values), n_gram_size=self.n_gram_size)
 
-		return n_gram_values
+        return n_gram_values
 
-	def return_original(self, tokens: Iterator[Token]) -> List[str]:
-		"""
-		Returns original sentence.
+    def return_original(self, tokens: Iterator[Token]) -> str:
+        """
+        Returns original sentence.
 
-		:param tokens: List of tokens.
-		:return:  List of original tokens as a string
-		"""
-		token_list = []
-		original_iterator = map(lambda x: x.value, tokens)
+        :param tokens: List of tokens.
+        :return:  List of original tokens as a string
+        """
+        token_list = []
+        original_iterator = map(lambda x: x.value, tokens)
 
-		for token in original_iterator:
-			token_list.append(token)
+        for token in original_iterator:
+            token_list.append(token)
 
-		return token_list
+        # return "[CLS] " + " ".join(token_list) + " [SEP]"
+        return " ".join(token_list)
 
+    def save(self, path: str):
+        """
+        Writes data descriptor to JSON file.
 
-	def save(self, path: str):
-		"""
-		Writes data descriptor to JSON file.
+        :param path: Path including filename of output file.
+        """
 
-		:param path: Path including filename of output file.
-		"""
+        info_dict = {
+            "n_gram_size": self.n_gram_size,
+            "caseless": self.caseless,
+            "ignore_punctuation": self.ignore_punctuation,
+            "add_pos_tags": self.add_pos_tags,
+            "uses_lemma": self.uses_lemma,
+            "uses_sentences": self.uses_sentences
+        }
 
-		info_dict = {
-			"n_gram_size": self.n_gram_size,
-			"caseless": self.caseless,
-			"ignore_punctuation": self.ignore_punctuation,
-			"add_pos_tags": self.add_pos_tags,
-			"uses_lemma": self.uses_lemma,
-			"uses_sentences": self.uses_sentences
-		}
+        with open(path, "wt", encoding="utf8") as f:
+            json.dump(info_dict, f)
 
-		with open(path, "wt", encoding="utf8") as f:
-			json.dump(info_dict, f)
+    @staticmethod
+    def load(path: str) -> "DataDescriptor":
+        """
+        Loads data descriptor from JSON file.
 
-	@staticmethod
-	def load(path: str) -> "DataDescriptor":
-		"""
-		Loads data descriptor from JSON file.
+        :param path: Path to JSON file.
+        :return: DataDescriptor
+        """
 
-		:param path: Path to JSON file.
-		:return: DataDescriptor
-		"""
+        with open(path, "r") as f:
+            info_dict = json.load(f)
 
-		with open(path, "r") as f:
-			info_dict = json.load(f)
-
-		return DataDescriptor(
-			n_gram_size=int(info_dict["n_gram_size"]),
-			caseless=bool(info_dict["caseless"]),
-			ignore_punctuation=bool(info_dict["ignore_punctuation"]),
-			add_pos_tags=bool(info_dict["add_pos_tags"]),
-			uses_lemma=bool(info_dict["uses_lemma"]),
-			uses_sentences=bool(info_dict["uses_sentences"])
-		)
+        return DataDescriptor(
+            n_gram_size=int(info_dict["n_gram_size"]),
+            caseless=bool(info_dict["caseless"]),
+            ignore_punctuation=bool(info_dict["ignore_punctuation"]),
+            add_pos_tags=bool(info_dict["add_pos_tags"]),
+            uses_lemma=bool(info_dict["uses_lemma"]),
+            uses_sentences=bool(info_dict["uses_sentences"])
+        )
 
 
 class ExampleWriter:
-	"""
-	Writes examples to file on disk.
-	"""
+    """
+    Writes examples to file on disk.
+    """
 
-	MAX_EXAMPLES_PER_FILE = 1000000
+    MAX_EXAMPLES_PER_FILE = 1000000
 
-	def __init__(self, path: str, file_prefix: str, data_descriptor: DataDescriptor, number_of_workers: int = 4):
-		"""
-		Creates writer.
+    def __init__(self, path: str, file_prefix: str, data_descriptor: DataDescriptor, number_of_workers: int = 4):
+        """
+        Creates writer.
 
-		:param path: Path to output folder. May not already exist!
-		:param file_prefix: Prefix for filenames.
-		:param data_descriptor: Instance of `DataDescriptor`. Will be used to prepare tokens.
-		:param number_of_workers: Number of processes used for preparing tokens.
-		"""
+        :param path: Path to output folder. May not already exist!
+        :param file_prefix: Prefix for filenames.
+        :param data_descriptor: Instance of `DataDescriptor`. Will be used to prepare tokens.
+        :param number_of_workers: Number of processes used for preparing tokens.
+        """
 
-		self.input_queue = mp.Queue(1000)
-		self.serialized_examples_queue = mp.Queue(1000)
+        self.input_queue = mp.Queue(10000)
+        self.serialized_examples_queue = mp.Queue(10000)
 
-		self.example_count = 0
+        self.example_count = 0
 
-		self.writer_process = mp.Process(
-			target=ExampleWriter._write_task,
-			args=(
-				path,
-				file_prefix,
-				self.serialized_examples_queue
-			)
-		)
-		self.writer_process.start()
+        self.writer_process = mp.Process(
+            target=ExampleWriter._write_task,
+            args=(
+                path,
+                file_prefix,
+                self.serialized_examples_queue
+            )
+        )
+        self.writer_process.start()
 
-		worker_processes = []
-		for _ in range(number_of_workers):
-			worker_process = mp.Process(
-				target=ExampleWriter._worker_task,
-				args=(data_descriptor, self.input_queue, self.serialized_examples_queue)
-			)
-			worker_process.start()
-			worker_processes.append(worker_process)
+        worker_processes = []
+        for _ in range(number_of_workers):
+            worker_process = mp.Process(
+                target=ExampleWriter._worker_task,
+                args=(data_descriptor, self.input_queue, self.serialized_examples_queue)
+            )
+            worker_process.start()
+            worker_processes.append(worker_process)
 
-		self.worker_processes = worker_processes
+        self.worker_processes = worker_processes
 
-	def close(self):
-		"""
-		Closes any open files. Call this after writing the last example or use a `with` statement.
-		"""
-		for _ in range(len(self.worker_processes)):
-			self.input_queue.put(None)
+    def close(self):
+        """
+        Closes any open files. Call this after writing the last example or use a `with` statement.
+        """
+        for _ in range(len(self.worker_processes)):
+            self.input_queue.put(None)
 
-		for p in self.worker_processes:
-			p.join()
+        for p in self.worker_processes:
+            p.join()
 
-		self.serialized_examples_queue.put(None)
-		self.writer_process.join()
+        self.serialized_examples_queue.put(None)
+        self.writer_process.join()
 
-	def write(self, tokens: List[Token], possible_senses: List[int], sense: int):
-		"""
-		Writes example.
+    def write(self, tokens: List[Token], possible_senses: List[int], sense: int):
+        """
+        Writes example.
 
-		:param tokens: List of `Token` instances.
-		:param possible_senses: List of possible senses. Sorted ascending.
-		:param sense: Sense. Must also be in possible senses!
-		:return:
-		"""
+        :param tokens: List of `Token` instances.
+        :param possible_senses: List of possible senses. Sorted ascending.
+        :param sense: Sense. Must also be in possible senses!
+        :return:
+        """
 
-		self.input_queue.put((tokens, possible_senses, sense))
-		self.example_count += 1
+        self.input_queue.put((tokens, possible_senses, sense))
+        self.example_count += 1
 
-	@staticmethod
-	def _worker_task(data_descriptor: DataDescriptor, in_queue: mp.Queue, out_queue: mp.Queue):
-		while True:
-			write_task = in_queue.get()
-			if write_task is None:
-				break
+    @staticmethod
+    def _worker_task(data_descriptor: DataDescriptor, in_queue: mp.Queue, out_queue: mp.Queue):
+        while True:
+            write_task = in_queue.get()
+            if write_task is None:
+                break
 
-			tokens, possible_senses, sense = write_task
-			assert sense in possible_senses
+            tokens, possible_senses, sense = write_task
+            assert sense in possible_senses
+            prepared_tokens = data_descriptor.prepare_tokens(tokens=tokens)
+            # original_tokens = data_descriptor.return_original(tokens=tokens)
 
-			prepared_tokens = data_descriptor.prepare_tokens(tokens=tokens)
+            if len(prepared_tokens) == 0:
+                print("Skipped example:", write_task)
+                continue
 
-			if len(prepared_tokens) == 0:
-				print("Skipped empty example:", write_task)
-				continue
 
-			##########################
-			original_tokens = data_descriptor.return_original(tokens=tokens)
-			data_for_csv = [original_tokens, tokens, prepared_tokens, possible_senses, sense]
 
-			out_queue.put(data_for_csv)
+            ##########################
 
-			# encoded_tokens = list(map(lambda s: s.encode("utf8"), prepared_tokens))
-			#
-			# feature = {
-			# 	"tokens": tf.train.Feature(bytes_list=tf.train.BytesList(value=encoded_tokens)),
-			# 	"possible_senses": tf.train.Feature(int64_list=tf.train.Int64List(value=possible_senses)),
-			# 	"sense": tf.train.Feature(int64_list=tf.train.Int64List(value=[sense]))
-			# }
-			#
-			# example = tf.train.Example(features=tf.train.Features(feature=feature))
-			# serialized_example = example.SerializeToString()
-			#
-			# out_queue.put(serialized_example)
+            # tokenized_text = tokenizer.tokenize(original_tokens)
+            # if len(tokenized_text) <= 10 or len(tokenized_text) >= 500: #also taking Berts maximum word count into account here
+            #     # print("Skipped example:", original_tokens)
+            #     continue
 
-	@staticmethod
-	def _write_task(path: str, file_prefix: str, queue: mp.Queue):
-		os.makedirs(path, exist_ok=False)
+            # indexed_tokens = tokenizer.convert_tokens_to_ids(tokenized_text)
+            # tokens_tensor = torch.tensor([indexed_tokens])
+            #
+            # with torch.no_grad():
+            #     forward_pass = model(tokens_tensor)
+            #
+            # embedding = forward_pass[0].numpy()[0]
+            # sent_embedding = list(np.average(embedding, axis=0))
 
-		##########################
-		writer = None
-		next_file_index = 0
-		examples_in_current_file = 0
+            # sent_embedding = [round(float(value), 6) for value in sent_embedding]
+            # data_for_csv = [original_tokens, tokens, prepared_tokens, possible_senses, sense]
+            #
+            # out_queue.put(data_for_csv)
+            encoded_tokens = list(map(lambda s: s.encode("utf8"), prepared_tokens))
+            # encoded_token = original_tokens.encode('utf-8')
 
-		while True:
-			data_for_csv = queue.get()
-			if data_for_csv is None:
-				break
+            feature = {
+                "tokens": tf.train.Feature(bytes_list=tf.train.BytesList(value=encoded_tokens)),
+                "possible_senses": tf.train.Feature(int64_list=tf.train.Int64List(value=possible_senses)),
+                "sense": tf.train.Feature(int64_list=tf.train.Int64List(value=[sense]))
+            }
 
-			if writer is None or examples_in_current_file >= ExampleWriter.MAX_EXAMPLES_PER_FILE:
-				filename = path + "/" + file_prefix + "." + str(next_file_index).rjust(3, "0") + ".csv"
-				next_file_index += 1
+            example = tf.train.Example(features=tf.train.Features(feature=feature))
+            serialized_example = example.SerializeToString()
 
-				if writer is not None:
-					writer.close()
+            out_queue.put(serialized_example)
 
-				writer = open(filename, 'a+', newline='')
-				csv_writer = csv.writer(writer)
+    @staticmethod
+    def _write_task(path: str, file_prefix: str, queue: mp.Queue):
+        os.makedirs(path, exist_ok=False)
 
-				examples_in_current_file = 0
+        ##########################
+        # writer = None
+        # next_file_index = 0
+        # examples_in_current_file = 0
+        #
+        # while True:
+        # 	data_for_csv = queue.get()
+        # 	if data_for_csv is None:
+        # 		break
+        #
+        # 	if writer is None or examples_in_current_file >= ExampleWriter.MAX_EXAMPLES_PER_FILE:
+        # 		filename = path + "/" + file_prefix + "." + str(next_file_index).rjust(3, "0") + ".csv"
+        # 		next_file_index += 1
+        #
+        # 		if writer is not None:
+        # 			writer.close()
+        #
+        # 		writer = open(filename, 'a+', newline='')
+        # 		csv_writer = csv.writer(writer)
+        #
+        # 		examples_in_current_file = 0
+        #
+        # 	csv_writer.writerow(data_for_csv)
+        # 	examples_in_current_file += 1
+        #
+        # if writer is not None:
+        # 	writer.close()
+        ############################
+        file_options = tf.io.TFRecordOptions(compression_type="GZIP")
 
-			csv_writer.writerow(data_for_csv)
-			examples_in_current_file += 1
+        writer = None
+        next_file_index = 0
 
-		if writer is not None:
-			writer.close()
+        examples_in_current_file = 0
 
-		# file_options = tf.python_io.TFRecordOptions(compression_type=tf.python_io.TFRecordCompressionType.GZIP)
-		#
-		# writer = None
-		# next_file_index = 0
-		#
-		# examples_in_current_file = 0
-		#
-		# while True:
-		# 	serialized_example = queue.get()
-		# 	if serialized_example is None:
-		# 		break
-		#
-		# 	if writer is None or examples_in_current_file >= ExampleWriter.MAX_EXAMPLES_PER_FILE:
-		# 		filename = file_prefix + "." + str(next_file_index).rjust(3, "0") + ".tfrecords.gz"
-		# 		next_file_index += 1
-		#
-		# 		if writer is not None:
-		# 			writer.close()
-		#
-		# 		writer = tf.python_io.TFRecordWriter(
-		# 			os.path.join(path, filename),
-		# 			options=file_options
-		# 		)
-		# 		examples_in_current_file = 0
-		#
-		# 	writer.write(serialized_example)
-		#
-		# 	examples_in_current_file += 1
-		#
-		# if writer is not None:
-		# 	writer.close()
+        while True:
+            serialized_example = queue.get()
+            if serialized_example is None:
+                break
 
-	def __enter__(self):
-		return self
+            if writer is None or examples_in_current_file >= ExampleWriter.MAX_EXAMPLES_PER_FILE:
+                filename = file_prefix + "." + str(next_file_index).rjust(3, "0") + ".tfrecords.gz"
+                next_file_index += 1
 
-	def __exit__(self, exc_type, exc_val, exc_tb):
-		self.close()
-		return False
+                if writer is not None:
+                    writer.close()
+
+                writer = tf.io.TFRecordWriter(
+                    os.path.join(path, filename),
+                    options=file_options
+                )
+                examples_in_current_file = 0
+
+            writer.write(serialized_example)
+
+            examples_in_current_file += 1
+
+        if writer is not None:
+            writer.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False

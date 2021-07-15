@@ -23,7 +23,7 @@ This package was used with **Python 3.6** with the following package specificati
 * **spacy** = 3.0 (along with the "de_core_news_lg" pipeline)
 
 ## Required Data
-Following dumps need to be downloaded from [here](https://dumps.wikimedia.org/dewiki/) (accessed: 21.02.2021):
+The following dumps need to be downloaded from [here](https://dumps.wikimedia.org/dewiki/) (accessed: 21.02.2021):
 
 * dewiki-*-categorylinks.sql.gz
 * dewiki-*-page.sql.gz
